@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Account</title>
+
+  <!-- === Styles === -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #f4f6f8;
+      min-height: 100vh;
+    }
+
+    .navbar {
+      background-color: #2e3a59;
+      color: #fff;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nav-links {
+      list-style: none;
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .nav-links li a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .nav-links li a:hover {
+      color: #b0d4ff;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 4rem auto;
+      background: white;
+      padding: 2rem 3rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      color: #2e3a59;
+    }
+
+    #userDetails p {
+      font-size: 1.1rem;
+      margin: 1rem 0;
+      color: #333;
+    }
+
+    #userDetails span {
+      font-weight: 600;
+      color: #000;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media screen and (max-width: 600px) {
+      .container {
+        margin: 2rem 1rem;
+        padding: 1.5rem;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+      }
+
+      #userDetails p {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- === Navbar === -->
+  <nav class="navbar">
+    <div class="logo"><strong>Admin Panel</strong></div>
+    <ul class="nav-links">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="account.html">My Account</a></li>
+      <li><a href="#" id="logoutBtn">Logout</a></li>
+    </ul>
+  </nav>
+
+  <!-- === Account Info Card === -->
+  <div class="container">
+    <h1>My Account</h1>
+    <div id="userDetails">
+      <p><strong>Name:</strong> <span id="userName">Loading...</span></p>
+      <p><strong>Email:</strong> <span id="userEmail">Loading...</span></p>
+      <p><strong>UID:</strong> <span id="userUID">Loading...</span></p>
+    </div>
+  </div>
+
+  <!-- === Firebase Auth JS === -->
+  <script type="module">
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { app } from "./firebase-config.js";
+
+    const auth = getAuth(app);
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById("userName").textContent = user.displayName || "N/A";
+        document.getElementById("userEmail").textContent = user.email;
+        document.getElementById("userUID").textContent = user.uid;
+      } else {
+        window.location.href = "/login.html";
+      }
+    });
+  </script>
+
+  <!-- === Logout Logic === -->
+  <script type="module" src="./logout.js"></script>
+
+</body>
+</html>

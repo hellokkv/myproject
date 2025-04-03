@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - FormBuilder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="logout.js" defer type="module"></script>
+  <!-- Firebase Setup -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getDatabase, ref, set, get, push, child } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDJK_ortXgQkKYdf1EQTLfWHD69I1f_yYI",
+      authDomain: "form-builder-f47a4.firebaseapp.com",
+      databaseURL: "https://form-builder-f47a4-default-rtdb.firebaseio.com",
+      projectId: "form-builder-f47a4",
+      storageBucket: "form-builder-f47a4.appspot.com",
+      messagingSenderId: "25328996112",
+      appId: "1:25328996112:web:3eff1c0febb7bd378f9f95"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    window.publishForm = function(formId) {
+      let forms = JSON.parse(localStorage.getItem('forms') || '[]');
+      const form = forms.find(f => f.id === formId);
+      if (!form) return alert("Form not found in drafts.");
+
+      form.status = 'published';
+
+      console.log("Publishing form with ID:", formId);
+      set(ref(db, 'forms/' + formId), form)
+        .then(() => {
+          localStorage.setItem('forms', JSON.stringify(forms));
+          alert('Form Published! Share this link:\n' + window.location.origin + '/Minor_Project/form.html?id=' + formId);
+          renderForms();
+        })
+        .catch((error) => {
+          console.error("Error saving to Firebase:", error);
+          alert('Failed to publish form. Please check console for details.');
+        });
+    }
+
+    window.createForm = function() {
+      const formId = 'form_' + Date.now();
+      localStorage.setItem('currentFormId', formId);
+      window.location.href = `create-form.html?id=${formId}`;
+    }
+
+    window.saveDraft = function() {
+      const formId = localStorage.getItem('currentFormId');
+      if (!formId) return alert("No active form. Please click 'Create New Form' first.");
+
+      let forms = JSON.parse(localStorage.getItem('forms') || '[]');
+      if (!forms.find(f => f.id === formId)) {
+        forms.push({
+          id: formId,
+          title: "Untitled Form",
+          status: "draft",
+          fields: []
+        });
+        localStorage.setItem('forms', JSON.stringify(forms));
+        alert("Form saved as draft!");
+      } else {
+        alert("Form already saved.");
+      }
+      renderForms();
+    }
+
+    window.useTemplate = function(index) {
+      const templates = [
+        [{ type: "text", label: "Name" }, { type: "email", label: "Email" }],
+        [{ type: "text", label: "Full Name" }, { type: "file", label: "Upload Resume" }],
+        [{ type: "radio", label: "Are you satisfied?", options: ["Yes", "No"] }]
+      ];
+
+      const formId = 'form_' + Date.now();
+      const newForm = {
+        id: formId,
+        title: `Template ${index + 1}`,
+        status: "draft",
+        fields: templates[index],
+        responses: []
+      };
+
+      let forms = JSON.parse(localStorage.getItem('forms') || '[]');
+      forms.push(newForm);
+      localStorage.setItem('forms', JSON.stringify(forms));
+      window.location.href = `create-form.html?id=${formId}`;
+    }
+
+    window.deleteForm = function(formId) {
+      let forms = JSON.parse(localStorage.getItem('forms') || '[]');
+      forms = forms.filter(f => f.id !== formId);
+      localStorage.setItem('forms', JSON.stringify(forms));
+      renderForms();
+    }
+
+    window.renderForms = function() {
+      const formList = document.querySelector('.form-list');
+      let forms = JSON.parse(localStorage.getItem('forms') || '[]');
+      formList.innerHTML = '';
+
+      forms.forEach(form => {
+        const card = document.createElement('div');
+        card.className = 'form-card';
+
+        card.innerHTML = `
+          <div>
+            <h3>${form.title}</h3>
+            <p class="status">Status: ${form.status}</p>
+          </div>
+          <div class="form-actions">
+            <button onclick="location.href='create-form.html?id=${form.id}'">Edit</button>
+            ${form.status === 'published' ? 
+              `<button onclick=\"window.open('form.html?id=${form.id}', '_blank')\">View</button>
+               <button onclick=\"window.open('form-responses.html?id=${form.id}', '_blank')\">Responses</button>` : 
+              `<button onclick=\"publishForm('${form.id}')\">Publish</button>`}
+            <button style="background-color: #dc3545" onclick="deleteForm('${form.id}')">Delete</button>
+          </div>
+        `;
+        formList.appendChild(card);
+      });
+    }
+
+    window.onload = () => renderForms();
+  </script>
+
+  <!-- Existing styles kept intact -->
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f4f6f9;
+      color: #2c3e50;
+    }
+    header {
+      background: #6c63ff;
+      color: white;
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 1.8rem; }
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 20px;
+      font-weight: 500;
+    }
+    .dashboard-container { padding: 40px; }
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .actions button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      background-color: #007bff;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .actions button:hover { background-color: #0056b3; }
+    .form-list { margin-top: 30px; }
+    .form-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .form-card h3 { margin-bottom: 5px; }
+    .form-card .status { font-size: 0.85rem; color: gray; }
+    .form-card .form-actions button {
+      margin-left: 10px;
+      background-color: #6c63ff;
+      border: none;
+      padding: 8px 16px;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .form-card .form-actions button:hover { opacity: 0.85; }
+    .form-templates { margin-top: 50px; }
+    .template-list {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .template-card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      width: 250px;
+      text-align: center;
+    }
+    .template-card h4 { margin-bottom: 10px; }
+    .template-card button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background-color: #28a745;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .template-card button:hover { background-color: #218838; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Admin Dashboard</h1>
+    <nav>
+      <a href="account.html" id="myAccountLink">My Account</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <div class="dashboard-container">
+    <div class="actions">
+      <h2>My Forms</h2>
+      <div>
+        <button onclick="createForm()">Create New Form</button>
+        <button onclick="saveDraft()">Save Draft</button>
+      </div>
+    </div>
+
+    <div class="form-list"></div>
+
+    <div class="form-templates">
+      <h2>Use a Template</h2>
+      <div class="template-list">
+        <div class="template-card">
+          <h4>Contact Us</h4>
+          <p>Simple form to collect contact info</p>
+          <button onclick="useTemplate(0)">Use Template</button>
+        </div>
+        <div class="template-card">
+          <h4>Job Application</h4>
+          <p>Collect resumes and job preferences</p>
+          <button onclick="useTemplate(1)">Use Template</button>
+        </div>
+        <div class="template-card">
+          <h4>Survey</h4>
+          <p>Multiple-choice and rating questions</p>
+          <button onclick="useTemplate(2)">Use Template</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

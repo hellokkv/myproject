@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fill Form</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f4f6f9;
+      padding: 40px;
+    }
+    .form-container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 700px;
+      margin: auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin: 15px 0 5px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .input-tools {
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
+    }
+    canvas {
+      display: none;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+      cursor: crosshair;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2 id="formTitle">Loading Form...</h2>
+    <form id="dynamicForm"></form>
+    <button id="submitBtn">Submit</button>
+    <button id="downloadBtn" style="display:none">Download PDF</button>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const formId = urlParams.get('id');
+    const formTitle = document.getElementById('formTitle');
+    const dynamicForm = document.getElementById('dynamicForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    let formData = {};
+    let canvasMap = new Map();
+
+    function renderForm(form) {
+      formTitle.textContent = form.title;
+      form.fields.forEach((field, index) => {
+        const wrapper = document.createElement('div');
+        const label = document.createElement('label');
+        label.textContent = field.label;
+        wrapper.appendChild(label);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.name = 'field_' + index;
+        wrapper.appendChild(input);
+
+        const tools = document.createElement('div');
+        tools.className = 'input-tools';
+
+        const micBtn = document.createElement('button');
+        micBtn.type = 'button';
+        micBtn.textContent = '🎤 Voice';
+        micBtn.addEventListener('click', () => startVoiceToText(input, micBtn));
+        tools.appendChild(micBtn);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 500;
+        canvas.height = 150;
+        canvas.style.display = 'none';
+        const ctx = canvas.getContext('2d');
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000';
+
+        let drawing = false;
+        canvas.addEventListener('mousedown', (e) => {
+          drawing = true;
+          ctx.beginPath();
+          ctx.moveTo(e.offsetX, e.offsetY);
+        });
+        canvas.addEventListener('mouseup', () => drawing = false);
+        canvas.addEventListener('mouseout', () => drawing = false);
+        canvas.addEventListener('mousemove', (e) => {
+          if (!drawing) return;
+          ctx.lineTo(e.offsetX, e.offsetY);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(e.offsetX, e.offsetY);
+        });
+
+        const drawBtn = document.createElement('button');
+        drawBtn.type = 'button';
+        drawBtn.textContent = '✒️ Stylus';
+        drawBtn.onclick = () => {
+          canvas.style.display = 'block';
+        };
+        tools.appendChild(drawBtn);
+
+        wrapper.appendChild(tools);
+        wrapper.appendChild(canvas);
+        dynamicForm.appendChild(wrapper);
+
+        canvasMap.set(index, canvas);
+      });
+    }
+
+    function startVoiceToText(inputEl, btn) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Speech recognition not supported in this browser.");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      btn.disabled = true;
+      btn.textContent = '🎙️ Listening...';
+
+      recognition.onresult = event => {
+        const transcript = event.results[0][0].transcript;
+        inputEl.value = transcript;
+        btn.disabled = false;
+        btn.textContent = '🎤 Voice';
+      };
+
+      recognition.onerror = event => {
+        console.error("Speech Recognition Error: ", event.error);
+        alert("Voice recognition error: " + event.error);
+        btn.disabled = false;
+        btn.textContent = '🎤 Voice';
+      };
+
+      recognition.onend = () => {
+        if (btn.disabled) {
+          btn.disabled = false;
+          btn.textContent = '🎤 Voice';
+        }
+      };
+
+      recognition.start();
+    }
+
+    async function handleSubmit(form) {
+      const inputs = dynamicForm.elements;
+      const response = [];
+      let fieldIndex = 0;
+
+      for (let field of form.fields) {
+        let value = inputs['field_' + fieldIndex]?.value || '';
+
+        const canvas = canvasMap.get(fieldIndex);
+        if (canvas && canvas.style.display !== 'none') {
+          const trimmedCanvas = document.createElement('canvas');
+          trimmedCanvas.width = canvas.width;
+          trimmedCanvas.height = canvas.height;
+          const ctx = trimmedCanvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, trimmedCanvas.width, trimmedCanvas.height);
+          ctx.drawImage(canvas, 0, 0);
+
+          const dataURL = trimmedCanvas.toDataURL('image/png');
+          const result = await Tesseract.recognize(dataURL, 'eng', {
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ',
+            preserve_interword_spaces: 1
+          });
+          const textFromCanvas = result.data.text.trim();
+          value += textFromCanvas ? ` (Stylus: ${textFromCanvas})` : '';
+        }
+
+        response.push({ label: field.label, value });
+        fieldIndex++;
+      }
+
+      form.responses = form.responses || [];
+      form.responses.push(response);
+
+      let forms = JSON.parse(localStorage.getItem('forms') || '[]');
+      const idx = forms.findIndex(f => f.id === formId);
+      if (idx !== -1) {
+        forms[idx] = form;
+        localStorage.setItem('forms', JSON.stringify(forms));
+        alert('Response saved successfully!');
+        downloadBtn.style.display = 'inline-block';
+      }
+    }
+
+    function generatePDF(form) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(12);
+      doc.text(`Form Title: ${form.title}`, 10, 10);
+      const inputs = dynamicForm.elements;
+
+      let y = 20;
+      let fieldIndex = 0;
+      for (let field of form.fields) {
+        const value = inputs['field_' + fieldIndex]?.value || '';
+        doc.text(`${field.label}: ${value}`, 10, y);
+        y += 10;
+
+        const canvas = canvasMap.get(fieldIndex);
+        if (canvas && canvas.style.display !== 'none') {
+          const imgData = canvas.toDataURL('image/png');
+          doc.addImage(imgData, 'PNG', 10, y, 60, 20);
+          y += 30;
+        }
+
+        fieldIndex++;
+      }
+      doc.save(`${form.title.replace(/\s+/g, '_')}_response.pdf`);
+    }
+
+    window.onload = () => {
+      const forms = JSON.parse(localStorage.getItem('forms') || '[]');
+      const form = forms.find(f => f.id === formId);
+      if (form) {
+        formData = form;
+        renderForm(form);
+      } else {
+        formTitle.textContent = 'Form not found.';
+        submitBtn.disabled = true;
+      }
+    };
+
+    submitBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await handleSubmit(formData);
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      generatePDF(formData);
+    });
+  </script>
+</body>
+</html>

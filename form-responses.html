@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Responses</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f4f6f9;
+      padding: 40px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .chart-container {
+      max-width: 800px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .download-btn {
+      display: block;
+      margin: 30px auto;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .download-btn:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h2 id="formTitle">Loading responses...</h2>
+  <div id="charts"></div>
+  <button class="download-btn" onclick="downloadCSV()">Download CSV</button>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const formId = urlParams.get('id');
+    const chartsContainer = document.getElementById('charts');
+    const formTitle = document.getElementById('formTitle');
+
+    function generateCharts(form) {
+      formTitle.textContent = `Responses for: ${form.title}`;
+      const fieldData = form.fields.map((field, i) => {
+        const responses = form.responses.map(r => r[i].value);
+        return { label: field.label, type: field.type, responses };
+      });
+
+      fieldData.forEach((field, index) => {
+        const chartWrapper = document.createElement('div');
+        chartWrapper.className = 'chart-container';
+
+        const canvas = document.createElement('canvas');
+        canvas.id = 'chart_' + index;
+        chartWrapper.appendChild(canvas);
+        chartsContainer.appendChild(chartWrapper);
+
+        const responseCounts = {};
+        field.responses.forEach(val => {
+          responseCounts[val] = (responseCounts[val] || 0) + 1;
+        });
+
+        // Determine chart type based on field type and number of unique values
+        let chartType = 'bar';
+        const uniqueCount = Object.keys(responseCounts).length;
+        if (field.type === 'radio' || uniqueCount <= 5) {
+          chartType = 'doughnut';
+        } else if (uniqueCount > 10) {
+          chartType = 'line';
+        }
+
+        new Chart(canvas, {
+          type: chartType,
+          data: {
+            labels: Object.keys(responseCounts),
+            datasets: [{
+              label: field.label,
+              data: Object.values(responseCounts),
+              backgroundColor: [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                '#FF9F40', '#8E44AD', '#2ECC71', '#F1C40F', '#E74C3C'
+              ].slice(0, uniqueCount),
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: chartType === 'bar' ? 'top' : 'right',
+              },
+              title: {
+                display: true,
+                text: field.label
+              }
+            },
+            scales: chartType === 'bar' || chartType === 'line' ? {
+              y: {
+                beginAtZero: true
+              }
+            } : {}
+          }
+        });
+      });
+    }
+
+    function downloadCSV() {
+      const forms = JSON.parse(localStorage.getItem('forms') || '[]');
+      const form = forms.find(f => f.id === formId);
+      if (!form || !form.responses || form.responses.length === 0) return alert('No responses to download.');
+
+      const header = form.fields.map(f => f.label);
+      const rows = form.responses.map(r => r.map(a => `"${a.value}"`).join(","));
+      const csvContent = [header.join(","), ...rows].join("\n");
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${form.title.replace(/\s+/g, '_')}_responses.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    window.onload = () => {
+      const forms = JSON.parse(localStorage.getItem('forms') || '[]');
+      const form = forms.find(f => f.id === formId);
+      if (form && form.responses && form.responses.length > 0) {
+        generateCharts(form);
+      } else {
+        formTitle.textContent = 'No responses found or form not found.';
+      }
+    };
+  </script>
+</body>
+</html>
