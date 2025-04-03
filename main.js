@@ -1,37 +1,30 @@
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-analytics.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup} from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
   const firebaseConfig = {
-    apiKey: "AIzaSyDrFhoLMM2XgzI9Wp56iSyKZL2l7xzhH2o",
-    authDomain: "login-9a6d5.firebaseapp.com",
-    projectId: "login-9a6d5",
-    storageBucket: "login-9a6d5.firebasestorage.app",
-    messagingSenderId: "322644008968",
-    appId: "1:322644008968:web:c9821085b3c44b5ddc31bd",
-    measurementId: "G-DXGWY4QHTJ"
+    apiKey: "AIzaSyArf4xdPprg35EfOBNrmRuOafW9l7Zkol0",
+    authDomain: "login-inkribeai.firebaseapp.com",
+    projectId: "login-inkribeai",
+    storageBucket: "login-inkribeai.firebasestorage.app",
+    messagingSenderId: "1001350945063",
+    appId: "1:1001350945063:web:77617acb2dccea12d4b102",
+    measurementId: "G-57F1SVRSZT"
   };
+
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
+
+  const auth =getAuth(app);
+  aith.languageCode = 'en'
+
   const analytics = getAnalytics(app);
-  const provider = new GoogleAuthProvider();
-  const auth = getAuth(app);
+
+  const provider = new GoogleAuthProvider;
+
   const googleLogin = document.getElementById("googleSignInBtn");
-  auth.languageCode = 'en'
 
   googleLogin.addEventListener("click", function(){
-
-    signInWithPopup(auth, provider)
-  .then((result) => {
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const user = result.user;
-    console.log(user);
-    window.location.href="dashboard.html";
-
-  }).catch((error) => {
-    const errorCode = error.code;
-    const errorMessage = error.message;
-
-
-  });
-
+    alert(5)
   })
