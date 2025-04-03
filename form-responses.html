@@ -41,7 +41,7 @@
     .charts-wrapper {
       display: flex;
       flex-wrap: wrap;
-      gap: 16px;
+      gap: 300px; /* Increased gap between charts */
       justify-content: center;
       padding: 20px;
     }
@@ -63,50 +63,47 @@
   </div>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const formId = urlParams.get('id');
-    const chartsContainer = document.getElementById('charts');
-    const formTitle = document.getElementById('formTitle');
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const formId = urlParams.get('id');
+      const chartsContainer = document.getElementById('charts');
+      const formTitle = document.getElementById('formTitle');
 
-    function generateCharts(form) {
-      formTitle.textContent = `Responses for: ${form.title}`;
-      const fieldData = form.fields.map((field, i) => {
-        const responses = form.responses.map(r => r[i].value);
-        return { label: field.label, type: field.type, responses };
-      });
+      function generateCharts(form) {
+        formTitle.textContent = `Responses for: ${form.title}`;
+        form.fields.forEach((field, index) => {
+          const responses = form.responses.map(r => r[index].value);
+          const responseCounts = responses.reduce((acc, val) => {
+            acc[val] = (acc[val] || 0) + 1;
+            return acc;
+          }, {});
 
-      fieldData.forEach((field, index) => {
-        const chartWrapper = document.createElement('div');
-        chartWrapper.className = 'chart-container p-4 bg-white rounded-lg shadow-md m-2';
-
-        const canvas = document.createElement('canvas');
-        canvas.id = 'chart_' + index;
-        chartWrapper.appendChild(canvas);
-        chartsContainer.appendChild(chartWrapper);
-
-        const responseCounts = {};
-        field.responses.forEach(val => {
-          responseCounts[val] = (responseCounts[val] || 0) + 1;
+          const chartType = determineChartType(field.type, Object.keys(responseCounts).length);
+          const canvas = document.createElement('canvas');
+          canvas.id = 'chart_' + index;
+          const chartWrapper = document.createElement('div');
+          chartWrapper.className = 'chart-container p-4 bg-white rounded-lg shadow-md m-2';
+          chartWrapper.appendChild(canvas);
+          chartsContainer.appendChild(chartWrapper);
+          createChart(canvas, chartType, field.label, responseCounts);
         });
+      }
 
-        let chartType = 'bar'; // Default to bar
-        if (field.type === 'radio' || Object.keys(responseCounts).length <= 5) {
-          chartType = 'doughnut';
-        } else if (field.type === 'text' && Object.keys(responseCounts).length > 10) {
-          chartType = 'line';
-        }
+      function determineChartType(fieldType, uniqueCount) {
+        if (fieldType === 'radio' || uniqueCount <= 5) return 'doughnut';
+        else if (uniqueCount > 10) return 'line';
+        else return 'bar';
+      }
 
+      function createChart(canvas, chartType, label, responseCounts) {
         new Chart(canvas, {
           type: chartType,
           data: {
             labels: Object.keys(responseCounts),
             datasets: [{
-              label: field.label,
+              label: label,
               data: Object.values(responseCounts),
-              backgroundColor: [
-                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-                '#FF9F40', '#8E44AD', '#2ECC71', '#F1C40F', '#E74C3C'
-              ],
+              backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#8E44AD', '#2ECC71', '#F1C40F', '#E74C3C'],
               borderWidth: 1
             }]
           },
@@ -114,59 +111,50 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              legend: {
-                position: 'right',
-              },
-              title: {
-                display: true,
-                text: field.label
-              }
-            },
-            scales: {
-              y: {
-                beginAtZero: true
-              }
+              legend: { position: 'right' },
+              title: { display: true, text: label }
             }
           }
         });
-      });
-    }
-
-    document.querySelector('.download-btn').addEventListener('click', downloadCSV);
-
-    function downloadCSV() {
-      const forms = JSON.parse(localStorage.getItem('forms') || '[]');
-      const form = forms.find(f => f.id === formId);
-      if (!form || !form.responses || form.responses.length === 0) {
-        alert('No responses to download.');
-        return;
       }
 
-      const header = form.fields.map(f => f.label);
-      const rows = form.responses.map(r => r.map(a => `"${a.value}"`).join(","));
-      const csvContent = [header.join(","), ...rows].join("\n");
+      document.querySelector('.download-btn').addEventListener('click', downloadCSV);
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${form.title.replace(/\s+/g, '_')}_responses.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+      function downloadCSV() {
+        const forms = JSON.parse(localStorage.getItem('forms') || '[]');
+        const form = forms.find(f => f.id === formId);
+        if (!form || !form.responses || form.responses.length === 0) {
+          alert('No responses to download.');
+          return;
+        }
 
-    window.onload = () => {
-      const forms = JSON.parse(localStorage.getItem('forms') || '[]');
-      const form = forms.find(f => f.id === formId);
-      if (form && form.responses && form.responses.length > 0) {
-        generateCharts(form);
-      } else {
-        formTitle.textContent = 'No responses found or form not found.';
+        const header = form.fields.map(f => f.label);
+        const rows = form.responses.map(r => r.map(a => `"${a.value}"`).join(","));
+        const csvContent = [header.join(","), ...rows].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${form.title.replace(/\s+/g, '_')}_responses.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
-    };
 
-    
+      fetchFormData();
+      
+      function fetchFormData() {
+        // Fetch form data and initialize charts
+        const forms = JSON.parse(localStorage.getItem('forms') || '[]');
+        const form = forms.find(f => f.id === formId);
+        if (form && form.responses && form.responses.length > 0) {
+          generateCharts(form);
+        } else {
+          formTitle.textContent = 'No responses found or form not found.';
+        }
+      }
+    });
   </script>
 </body>
 </html>
